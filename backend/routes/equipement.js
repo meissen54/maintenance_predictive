@@ -1,0 +1,44 @@
+const express= require("express");
+const Equipempent = require("../models/equipement");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const router = express.Router();
+const SECRET_KEY = process.env.JWT_SECRET || "monSuperSecret";
+const authenticateUser = (req, res, next) => {
+  const token = req.header("Authorization");
+  if (!token) {
+    return res.status(401).json({ message: "Accès refusé. Aucun token fourni." });
+  }
+
+  try {
+    const decoded = jwt.verify(token.replace("Bearer ", ""), SECRET_KEY);
+    req.user = decoded; // Attach user data to the request
+    next();
+  } catch (error) {
+    res.status(400).json({ message: "Token invalide." });
+  }
+};
+
+//ajout d'un équipement
+router.post("/addEquipement", async (req, res) => {
+    const { nom, description, numSerie, dateAchat, etat, localisation } = req.body;  // Extract fields from the request body
+  
+    try {
+      const newEquipement = new Equipement({ nom, description, numSerie, dateAchat, etat, localisation });
+      await newEquipement.save();  // Save the new item to MongoDB
+      res.status(201).json(newEquipement);  // Send back the newly created item
+    } catch (err) {
+      res.status(500).json({ message: "Erreur lors de la création de l'équipement" });
+    }
+  });
+//récupérer tous les équipemements
+router.get("/getEquipement", async (req, res) => {
+    try {
+      const equipement = await Equipement.find();  // Fetch all items from the MongoDB collection
+      res.status(200).json(equipement);      // Send back the list of items
+    } catch (err) {
+      res.status(500).json({ message: "Erreur lors de la récupération des éléments" });
+      console.log("l'équipement est",res);
+    }
+  });
+module.exports = router;
