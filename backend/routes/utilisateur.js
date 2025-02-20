@@ -4,8 +4,9 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const router = express.Router();
 const SECRET_KEY = process.env.JWT_SECRET || "monSuperSecret";
+//fonction pour gérer les roles et la connexion
 const authenticateUser = (req, res, next) => {
-  const token = req.header("Authorization");
+  const token = req.header("Authorization") || req.header("authorization");
   if (!token) {
     return res.status(401).json({ message: "Accès refusé. Aucun token fourni." });
   }
@@ -18,12 +19,20 @@ const authenticateUser = (req, res, next) => {
     res.status(400).json({ message: "Token invalide." });
   }
 };
-module.exports = { authenticateUser };
+const authorizeRole = (role) => {
+  return (req, res, next) => {
+    if (!req.user || req.user.role !== role) {
+      return res.status(403).json({ message: "Accès interdit." });
+    }
+    next();
+  };
+};
+module.exports = { authenticateUser, authorizeRole };
 
 //Crud utilisateurs
 
 //récupérer les utilisateurs depuis la base de données
-router.get("/getUtilisateur", async (req, res) => {
+router.get("/getUtilisateur",authenticateUser, authorizeRole("Administrateur"), async (req, res) => {
     try {
       const utilisateurs = await Utilisateur.find();  // Fetch all items from the MongoDB collection
       res.status(200).json(utilisateurs);      // Send back the list of items
@@ -33,7 +42,7 @@ router.get("/getUtilisateur", async (req, res) => {
   });
 
 //inscription
-router.post("/register", async (req, res) => {
+router.post("/register",authenticateUser, authorizeRole("Administrateur"), async (req, res) => {
     try {
     const { nom, prenom, tel, DateNaissance, type_utilisateur, email, motDePasse } = req.body;  
     if (!/^\S+@\S+\.\S+$/.test(email)) {
@@ -57,7 +66,7 @@ router.post("/register", async (req, res) => {
 
 
 //récupérer un utilisateur par l'id
-router.get("/getUserByID/:id", async (req, res) => {
+router.get("/getUserByID/:id",authenticateUser, authorizeRole("Administrateur"), async (req, res) => {
     try {
       // Vérifier si l'ID est valide avant la requête
       if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -118,7 +127,7 @@ router.post('/logout',async(req,res)=>{
 })
 
 //supprimer un utilisateur
-router.delete("/deleleteUtilisateur/:id", async (req, res) => {
+router.delete("/deleleteUtilisateur/:id",authenticateUser, authorizeRole("Administrateur"), async (req, res) => {
   const { id } = req.params; // Get the item ID from the URL parameter
 
   try {
@@ -135,7 +144,7 @@ router.delete("/deleleteUtilisateur/:id", async (req, res) => {
 });
 
 //modifier un utilisateur
-router.put("/updateUtilisateur/:id", async (req, res) => {
+router.put("/updateUtilisateur/:id",authenticateUser, authorizeRole("Administrateur"), async (req, res) => {
   const { id } = req.params;  // Get the item ID from the URL parameter
   const { nom, prenom, tel, DateNaissance, type_utilisateur, email, motDePasse } = req.body;  // Get updated data from request body
 
@@ -154,4 +163,6 @@ router.put("/updateUtilisateur/:id", async (req, res) => {
     res.status(500).json({ message: "Erreur lors de la création de l'utilisateur" });
   }
 });
+
+
 module.exports = router;
