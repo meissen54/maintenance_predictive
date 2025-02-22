@@ -33,7 +33,7 @@ module.exports = { authenticateUser, authorizeRole };
 
 
 //ajout d'un équipement
-router.post("/addEquipement",authenticateUser,authorizeRole("Administrateur"), async (req, res) => {
+router.post("/addEquipement",/*authenticateUser,authorizeRole("Administrateur"),*/ async (req, res) => {
     const { nom, description, numSerie, dateAchat, etat, localisation } = req.body;  // Extract fields from the request body
     console.log(req.body);
     try {

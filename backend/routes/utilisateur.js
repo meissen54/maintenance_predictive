@@ -3,25 +3,30 @@ const Utilisateur = require("../models/utilisateur");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const router = express.Router();
+const blackListToken= require("../models/blackListToken");
 const SECRET_KEY = process.env.JWT_SECRET || "monSuperSecret";
 //fonction pour gérer les roles et la connexion
-const authenticateUser = (req, res, next) => {
-  const token = req.header("Authorization") || req.header("authorization");
-  if (!token) {
-    return res.status(401).json({ message: "Accès refusé. Aucun token fourni." });
+const authenticateUser = async (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // Format : "Bearer <token>"
+  
+  if (!token) return res.status(401).json({ message: 'Token non fourni' });
+  
+  // Vérifie si le token est dans la liste noire
+  const isBlacklisted = await blackListToken.findOne({ token });
+  if (isBlacklisted) {
+    return res.status(403).json({ message: 'Token invalide (déconnexion)' });
   }
-
-  try {
-    const decoded = jwt.verify(token.replace("Bearer ", ""), SECRET_KEY);
-    req.user = decoded; // Attach user data to the request
+  // Vérifie la validité du token
+  jwt.verify(token, process.env.SECRET_KEY, (err, utilisateur) => {
+    if (err) return res.status(403).json({ message: 'Token invalide ou expiré' });
+    req.utilisateur = utilisateur; // Ajoute les informations de l'utilisateur à la requête
     next();
-  } catch (error) {
-    res.status(400).json({ message: "Token invalide." });
-  }
+  });
 };
 const authorizeRole = (role) => {
   return (req, res, next) => {
-    if (!req.user || req.user.role !== role) {
+    if (!req.utilisateur || req.utilisateur.role !== role) {
       return res.status(403).json({ message: "Accès interdit." });
     }
     next();
@@ -32,7 +37,7 @@ module.exports = { authenticateUser, authorizeRole };
 //Crud utilisateurs
 
 //récupérer les utilisateurs depuis la base de données
-router.get("/getUtilisateur",authenticateUser, authorizeRole("Administrateur"), async (req, res) => {
+router.get("/getUtilisateur",authenticateUser, authorizeRole("Administrateur"),async (req, res) => {
     try {
       const utilisateurs = await Utilisateur.find();  // Fetch all items from the MongoDB collection
       res.status(200).json(utilisateurs);      // Send back the list of items
@@ -104,7 +109,7 @@ router.post('/login', async (req, res) => {
       }
   
       // Générer un token JWT
-      const token = jwt.sign({ id: utilisateur._id, email: utilisateur.email ,role: utilisateur.type_utilisateur, role: utilisateur.type_utilisateur}, SECRET_KEY, { expiresIn: '1h' });
+      const token = jwt.sign({ id: utilisateur._id, email: utilisateur.email ,role: utilisateur.type_utilisateur}, process.env.SECRET_KEY, { expiresIn: '30s' });
   
       res.json({ message: 'Connexion réussie', token });
   
@@ -115,16 +120,17 @@ router.post('/login', async (req, res) => {
   });
 
 //logout
-router.post('/logout',async(req,res)=>{
-  try{
-    
-    res.json({ message: 'Déconnexion réussie' });
+router.post('/logout', async (req, res) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
 
-  }catch(error){
-      console.error('Erreur ',error);
-      res.status(500).json({message:'erreur serveur'});
-  }
-})
+  if (!token) return res.status(400).json({ message: 'Token non fourni' });
+
+  // Ajoute le token à la liste noire
+  await blackListToken.create({ token });
+
+  res.status(200).json({ message: 'Déconnexion réussie' });
+});
 
 //supprimer un utilisateur
 router.delete("/deleleteUtilisateur/:id",authenticateUser, authorizeRole("Administrateur"), async (req, res) => {
