@@ -7,7 +7,8 @@ const UtilisateurSchema = new mongoose.Schema({
   tel: { type: String, required: true },
   DateNaissance: { type: Date, required: true },
   type_utilisateur: { type: String, enum: ['Technicien', 'Administrateur'], required: true },
-  motDePasse: { type: String, required: true }
+  motDePasse: { type: String, required: true },
+  departement: { type: mongoose.Schema.Types.ObjectId, ref: "depart", required: true },
 }, { timestamps: true });
 
 module.exports = mongoose.model("Utilisateur", UtilisateurSchema);
