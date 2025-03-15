@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";  // Importation de motion
 import COVER_IMAGE from "/src/assets/medical-equipment-dealer.jpg";
 import "../index.css";
 
@@ -12,36 +13,41 @@ const Login = () => {
 
       {/* Partie droite avec le formulaire */}
       <div className="w-1/2 flex justify-center items-center bg-gray-100">
-        <div className="bg-white p-10 rounded-2xl shadow-xl w-96">
-          <h2 className="text-3xl font-bold text-gray-800 text-center mb-6">Connexion</h2>
+        <div className="bg-white p-12 rounded-3xl shadow-xl w-96">
+          <h2 className="text-3xl font-bold text-gray-800 text-center mb-8">Connexion</h2>
           
           <form>
             {/* Champ Email */}
-            <div className="mb-4">
+            <div className="mb-6">
               <input
                 type="email"
                 placeholder="Email"
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full p-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-300 hover:border-green-500"
               />
             </div>
 
             {/* Champ Mot de passe */}
-            <div className="mb-4">
+            <div className="mb-6">
               <input
                 type="password"
                 placeholder="Mot de passe"
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full p-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-300 hover:border-green-500"
               />
             </div>
 
-            {/* Bouton Connexion */}
-            <button className="w-full mt-4 bg-green-600 text-white p-3 rounded-lg hover:bg-green-700 transition font-semibold">
+            {/* Bouton Connexion avec motion */}
+            <motion.button
+              className="w-full mt-6 bg-green-600 text-white p-4 rounded-xl hover:bg-green-700 transition-all duration-300 font-semibold shadow-lg"
+              whileHover={{ scale: 1.05 }} // Animation sur hover
+              whileTap={{ scale: 0.95 }} // Animation sur click
+              transition={{ type: "spring", stiffness: 300, damping: 15 }} // Rendre l'animation plus rapide
+            >
               Se connecter
-            </button>
+            </motion.button>
           </form>
 
           {/* Lien Mot de passe oublié */}
-          <p className="text-center text-gray-500 mt-4">
+          <p className="text-center text-gray-500 mt-6">
             <Link to="/reset-password" className="text-green-600 hover:underline">
               Mot de passe oublié ?
             </Link>
