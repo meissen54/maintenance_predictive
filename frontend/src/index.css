@@ -12,3 +12,14 @@
 {
   @apply relative min-h-screen flex items-center bg-gray-100;
 }
+nav {
+  border-bottom: none !important;
+  box-shadow: none !important;
+}
+body, html {
+  background: none !important; /* Supprime tout background */
+}
+.hidden-hover:hover {
+  display: none;
+}
+

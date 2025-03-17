@@ -1,58 +1,100 @@
-import { Link } from "react-router-dom";
-import { motion } from "framer-motion";  // Importation de motion
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import axios from "axios";
 import COVER_IMAGE from "/src/assets/medical-equipment-dealer.jpg";
-import "../index.css";
 
 const Login = () => {
+  const [email, setEmail] = useState("");
+  const [motDePasse, setMotDePasse] = useState("");
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setError(""); // Réinitialiser l'erreur
+  
+    try {
+      const response = await axios.post("http://localhost:4000/apiUtilisateur/login", { email, motDePasse });
+      
+      // Stocker le token et rediriger si tout est correct
+      localStorage.setItem("token", response.data.token);
+      navigate("/dashboard");
+    } catch (err) {
+      // Vérifier si le backend a renvoyé une erreur et afficher son message
+      if (err.response && err.response.data) {
+        setError(err.response.data); // Directement afficher le message d'erreur du backend
+      } else {
+        setError("Une erreur est survenue. Veuillez réessayer.");
+      }
+    }
+  };
+  
+
   return (
-    <div className="w-full h-screen flex">
-      {/* Partie gauche avec l'image */}
-      <div className="w-1/2 h-full">
-        <img src={COVER_IMAGE} className="w-full h-full object-cover" />
+    <div className="w-full h-screen flex relative">
+      {/* Image de fond avec flou et opacité */}
+      <div className="absolute inset-0">
+        <img src={COVER_IMAGE} className="w-full h-full object-cover filter blur-sm brightness-75" />
       </div>
 
-      {/* Partie droite avec le formulaire */}
-      <div className="w-1/2 flex justify-center items-center bg-gray-100">
-        <div className="bg-white p-12 rounded-3xl shadow-xl w-96">
-          <h2 className="text-3xl font-bold text-gray-800 text-center mb-8">Connexion</h2>
-          
-          <form>
+      {/* Contenu principal centré */}
+      <div className="relative w-full h-full flex justify-center items-center">
+        <motion.div
+          className="bg-white bg-opacity-10 backdrop-blur-lg p-10 rounded-2xl shadow-lg w-96"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+        >
+          {/* Titre */}
+          <h2 className="text-2xl font-semibold text-white text-center mb-6">Connexion</h2>
+
+          {/* Message d'erreur */}
+          {error && <p className="text-red-400 text-center mb-4">{error}</p>}
+
+          <form onSubmit={handleLogin}>
             {/* Champ Email */}
-            <div className="mb-6">
+            <div className="mb-4">
               <input
                 type="email"
                 placeholder="Email"
-                className="w-full p-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-300 hover:border-green-500"
+                className="w-full p-3 bg-transparent border border-white border-opacity-50 rounded-lg text-white placeholder-white placeholder-opacity-70 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
               />
             </div>
 
             {/* Champ Mot de passe */}
-            <div className="mb-6">
+            <div className="mb-4">
               <input
                 type="password"
                 placeholder="Mot de passe"
-                className="w-full p-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-300 hover:border-green-500"
+                className="w-full p-3 bg-transparent border border-white border-opacity-50 rounded-lg text-white placeholder-white placeholder-opacity-70 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-300"
+                value={motDePasse}
+                onChange={(e) => setMotDePasse(e.target.value)}
+                required
               />
             </div>
 
-            {/* Bouton Connexion avec motion */}
+            {/* Bouton de Connexion avec animation */}
             <motion.button
-              className="w-full mt-6 bg-green-600 text-white p-4 rounded-xl hover:bg-green-700 transition-all duration-300 font-semibold shadow-lg"
-              whileHover={{ scale: 1.05 }} // Animation sur hover
-              whileTap={{ scale: 0.95 }} // Animation sur click
-              transition={{ type: "spring", stiffness: 300, damping: 15 }} // Rendre l'animation plus rapide
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="w-full bg-green-500 text-white py-3 rounded-lg font-semibold text-lg shadow-md hover:bg-green-600 transition-all duration-300"
+              type="submit"
             >
               Se connecter
             </motion.button>
           </form>
 
           {/* Lien Mot de passe oublié */}
-          <p className="text-center text-gray-500 mt-6">
-            <Link to="/reset-password" className="text-green-600 hover:underline">
+          <div className="mt-4 text-center">
+            <Link to="/reset-password" className="text-white text-opacity-80 hover:text-green-300 transition-all duration-300">
               Mot de passe oublié ?
             </Link>
-          </p>
-        </div>
+          </div>
+        </motion.div>
       </div>
     </div>
   );
