@@ -1,86 +1,62 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Search, Plus, Trash, Edit, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom"; // Utilisation de useNavigate au lieu de useHistory
-
-const equipements = [
-  {
-    nom: "Échographe",
-    description: "Appareil d'imagerie médicale",
-    numeroSerie: "SN-123456",
-    dateAchat: "15/05/2022",
-    etat: "Défectueux",
-    departement: "Radiologie",
-    quantite: 3,
-    composants: ["Sonde ultrasonore", "Écran tactile", "Batterie rechargeable"],
-    dateAjout: "20/05/2022",
-  },
-  {
-    nom: "Respirateur artificiel",
-    description: "Assistance respiratoire",
-    numeroSerie: "SN-789012",
-    dateAchat: "10/08/2021",
-    etat: "En maintenance",
-    departement: "Réanimation",
-    quantite: 2,
-    composants: ["Valve de contrôle", "Filtre à air", "Capteur de pression"],
-    dateAjout: "15/08/2021",
-  },
-  {
-    nom: "IRM",
-    description: "Appareil d'imagerie par résonance magnétique",
-    numeroSerie: "SN-654321",
-    dateAchat: "12/02/2020",
-    etat: "Fonctionnel",
-    departement: "Imagerie",
-    quantite: 1,
-    composants: ["Bobines de gradient", "Aimant supraconducteur", "Console de commande"],
-    dateAjout: "15/02/2020",
-  },
-  {
-    nom: "Scanner CT",
-    description: "Tomodensitomètre pour imagerie en coupe",
-    numeroSerie: "SN-987654",
-    dateAchat: "05/11/2019",
-    etat: "En maintenance",
-    departement: "Imagerie",
-    quantite: 2,
-    composants: ["Tube à rayons X", "Détecteur de rayons X", "Console de traitement"],
-    dateAjout: "10/11/2019",
-  }
-];
-
-const equipementsParDepartement = equipements.reduce((acc, equipement) => {
-  acc[equipement.departement] = acc[equipement.departement] || [];
-  acc[equipement.departement].push(equipement);
-  return acc;
-}, {});
-
-const getEtatClass = (etat) => {
-  switch (etat) {
-    case "Fonctionnel":
-      return "text-green-600"; // Vert foncé
-    case "En maintenance":
-      return "text-orange-600"; // Orange foncé
-    case "Défectueux":
-      return "text-red-600"; // Rouge foncé
-    default:
-      return "text-gray-600"; // Gris foncé
-  }
-};
+import axios from "axios"; // Vous pouvez utiliser axios pour effectuer des requêtes HTTP
 
 const EquipementList = () => {
+  const [equipements, setEquipements] = useState([]); // État pour stocker les données des équipements
   const navigate = useNavigate(); // Remplacer useHistory par useNavigate
 
+  // Récupérer les données de l'API lors du montage du composant
+  useEffect(() => {
+    const fetchEquipements = async () => {
+      try {
+        const response = await axios.get("http://localhost:4000/apiEquipement/getEquipement"); // URL de votre API
+        setEquipements(response.data); // Stocker les données récupérées dans l'état
+      } catch (error) {
+        console.error("Erreur lors de la récupération des équipements:", error);
+      }
+    };
+
+    fetchEquipements(); // Appeler la fonction pour récupérer les données
+  }, []); // Tableau de dépendances vide pour n'exécuter cet effet qu'une seule fois
+
+  // Réorganiser les équipements par département
+  const equipementsParDepartement = equipements.reduce((acc, equipement) => {
+    acc[equipement.departement.nom] = acc[equipement.departement.nom] || [];
+    acc[equipement.departement.nom].push(equipement);
+    return acc;
+  }, {});
+
+  // Fonction pour obtenir la classe CSS en fonction de l'état de l'équipement
+  const getEtatClass = (etat) => {
+    switch (etat) {
+      case "fonctionnel":
+        return "text-green-600"; // Vert foncé
+      case "en maintenance":
+        return "text-orange-400"; // Orange foncé
+      case "défectueux":
+        return "text-red-600"; // Rouge foncé
+      default:
+        return "text-gray-600"; // Gris foncé
+    }
+  };
+
+  // Fonction pour formater la date (sans l'heure)
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("fr-FR"); // Format de la date en français (ex: 01/03/2025)
+  };
+
   // Fonction pour rediriger vers la page de consultation d'un équipement
-  const handleConsultation = (numeroSerie) => {
-    // Remplacez "/consulter-equipement" par la route que vous avez définie pour consulter l'équipement
-    navigate(`/consulter-equipement/${numeroSerie}`); // Utilisation de navigate pour la redirection
+  const handleConsultation = (numSerie) => {
+    navigate(`/consulter-equipement/${numSerie}`); // Utilisation de navigate pour la redirection
   };
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen">
+    <div className="w-full h-screen p-8 bg-[#f3f8f5]">
       <div className="mb-6 flex justify-between items-center">
-        <button className="bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-2 hover:bg-green-600 hover:shadow-xl transition duration-300">
+        <button className="bg-green-500 text-white px-4 py-3 rounded-full shadow-lg flex items-center gap-2 hover:bg-green-600 hover:shadow-xl transition duration-300">
           <Plus size={20} />
           Ajouter
         </button>
@@ -109,7 +85,6 @@ const EquipementList = () => {
                     <th className="p-4 font-semibold text-sm w-1/6">N° Série</th>
                     <th className="p-4 font-semibold text-sm w-1/6">Date Achat</th>
                     <th className="p-4 font-semibold text-sm w-1/6">État</th>
-                    <th className="p-4 font-semibold text-sm w-1/12">Quantité</th>
                     <th className="p-4 font-semibold text-sm w-1/4">Composants</th>
                     <th className="p-4 font-semibold text-sm w-1/6">Date Ajout</th>
                     <th className="p-4 font-semibold text-sm w-1/12"></th>
@@ -118,35 +93,37 @@ const EquipementList = () => {
                 <tbody>
                   {equipements.map((equipement, index) => (
                     <tr
-                      key={index}
+                      key={equipement._id} // Utilisez un identifiant unique si disponible
                       className={`border-t ${index % 2 === 1 ? "bg-gray-50" : "bg-white"}`}
                     >
                       <td className="p-4 border-b text-gray-700">{equipement.nom}</td>
                       <td className="p-4 border-b text-gray-600">{equipement.description}</td>
-                      <td className="p-4 border-b text-gray-700">{equipement.numeroSerie}</td>
-                      <td className="p-4 border-b text-gray-700">{equipement.dateAchat}</td>
+                      <td className="p-4 border-b text-gray-700">{equipement.numSerie}</td>
+                      <td className="p-4 border-b text-gray-700">{formatDate(equipement.dateAchat)}</td>
                       <td className="p-4 border-b">
                         <span className={`flex items-center gap-2 ${getEtatClass(equipement.etat)} whitespace-nowrap`}>
                           <span className="text-lg">•</span> {equipement.etat}
                         </span>
                       </td>
-                      <td className="p-4 border-b text-center text-gray-700">{equipement.quantite}</td>
                       <td className="p-4 border-b">
-                        <ul className="list-disc pl-5">
-                          {equipement.composants.map((composant, idx) => (
-                            <li key={idx} className="text-gray-600">{composant}</li>
-                          ))}
-                        </ul>
+                        {/* Affichage du nom du composant */}
+                        {equipement.composants && equipement.composants.nom ? (
+                          <span className="text-gray-600">{equipement.composants.nom}</span>
+                        ) : (
+                          <span>Aucun composant</span>
+                        )}
                       </td>
-                      <td className="p-4 border-b text-gray-700">{equipement.dateAjout}</td>
+                      <td className="p-4 border-b text-gray-700">
+                        {formatDate(equipement.dateAjout)}
+                      </td>
                       <td className="p-4 border-b text-center">
                         <div className="flex justify-center items-center gap-4">
-                        <button 
-                          className="text-green-500 hover:text-green-600 transition duration-200" 
-                          onClick={() => handleConsultation(equipement.numeroSerie)}
-                        >
-                          <Eye size={20} />
-                        </button>
+                          <button 
+                            className="text-green-500 hover:text-green-600 transition duration-200" 
+                            onClick={() => handleConsultation(equipement.numSerie)}
+                          >
+                            <Eye size={20} />
+                          </button>
 
                           <button className="text-blue-500 hover:text-blue-700 transition duration-200">
                             <Edit size={20} />
