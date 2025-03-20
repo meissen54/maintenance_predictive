@@ -25,4 +25,4 @@ const EquipementListPage = () => {
   );
 };
 
-export default EquipementListPage;
+export default EquipementListPage; 

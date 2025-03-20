@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import axios from "axios";
+import { jwtDecode } from "jwt-decode"; // Importation pour décoder le token
 import COVER_IMAGE from "/src/assets/medical-equipment-dealer.jpg";
 
 const Login = () => {
@@ -17,13 +18,30 @@ const Login = () => {
     try {
       const response = await axios.post("http://localhost:4000/apiUtilisateur/login", { email, motDePasse });
 
-      // Stocker le token et rediriger si tout est correct
-      localStorage.setItem("token", response.data.token);
-      navigate("/dashboard");
+      // Vérification et stockage du token
+      const token = response.data.token;
+      if (token) {
+        localStorage.setItem("token", token);
+        const decodedToken = jwtDecode(token);
+        const userRole = decodedToken.role;
+
+       // Redirection basée sur le rôle
+        switch (userRole) {
+          case "Administrateur":
+            navigate("/dashboard"); // Page admin
+            break;
+          case "Technicien":
+            navigate("/dashboard"); // Page utilisateur
+            break;
+          default:
+            navigate("/"); // Page d'accueil pour les autres rôles
+            break;
+        }
+      }
     } catch (err) {
-      // Vérifier si le backend a renvoyé une erreur et afficher son message
+      // Gestion des erreurs
       if (err.response && err.response.data.message) {
-        setError(err.response.data.message); // Récupérer le message du backend
+        setError(err.response.data.message); // Message du backend
       } else {
         setError("Une erreur est survenue. Veuillez réessayer.");
       }
@@ -48,7 +66,7 @@ const Login = () => {
           <h2 className="text-2xl font-semibold text-white text-center mb-6">Connexion</h2>
 
           <form onSubmit={handleLogin}>
-            {/* Label d'erreur au-dessus de l'email (visible seulement si une erreur existe) */}
+            {/* Label d'erreur */}
             {error && (
               <label className="text-red-400 text-sm mb-1 block transition-opacity duration-300">
                 {error}
