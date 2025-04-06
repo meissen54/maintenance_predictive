@@ -22,4 +22,22 @@ body, html {
 .hidden-hover:hover {
   display: none;
 }
+input[type="date"]::before {
+  content: attr(data-placeholder);
+  color: gray;
+  position: absolute;
+}
+.bg-color
+{
+  @apply bg-green-500;
+}
+/* App.css */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;  /* IE & Edge */
+  scrollbar-width: none;     /* Firefox */
+}
 

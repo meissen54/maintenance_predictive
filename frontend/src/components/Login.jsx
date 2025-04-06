@@ -103,7 +103,7 @@ const Login = () => {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="w-full bg-green-500 text-white py-3 rounded-lg font-semibold text-lg shadow-md hover:bg-green-600 transition-all duration-300"
+              className="w-full bg-color text-white py-3 rounded-lg font-semibold text-lg shadow-md hover:bg-green-600 transition-all duration-300"
               type="submit"
             >
               Se connecter
