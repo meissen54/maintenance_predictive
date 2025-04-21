@@ -1,13 +1,14 @@
-import React, { useState, useEffect, useRef } from "react";
-import { Plus, Trash, Edit, Eye, ChevronDown, ChevronUp, X, Filter } from "lucide-react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { Plus, Trash, Edit, Eye, ChevronDown, ChevronUp, Moon, Sun } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import AddEquipementModal from './AddEquipementModal';
 import UpdateEquipementModal from './UpdateEquipement';
 import ComposantsModal from './ComposantModal';
+import SearchBar from './SearchBar';
 
-const EquipementList = ({ selectedColor }) => {
+const EquipementList = ({ selectedColor, darkMode }) => {
   // États principaux
   const [equipements, setEquipements] = useState([]);
   const [filteredEquipements, setFilteredEquipements] = useState([]);
@@ -49,16 +50,27 @@ const EquipementList = ({ selectedColor }) => {
   const [isFilterActive, setIsFilterActive] = useState(false);
   const [activeDepartementFilters, setActiveDepartementFilters] = useState({});
   const [departementSearchType, setDepartementSearchType] = useState({});
+  const [focusedDepartementSearch, setFocusedDepartementSearch] = useState(null);
+  const [globalSearchHasFocus, setGlobalSearchHasFocus] = useState(false);
 
   const navigate = useNavigate();
   const filterRef = useRef(null);
   const deptFilterRefs = useRef({});
 
-  // Fermer les menus de filtrage quand on clique à l'extérieur
+  // Fonction pour gérer correctement les refs des départements
+  const setDeptFilterRef = useCallback((departement, el) => {
+    if (el) {
+      deptFilterRefs.current[departement] = el;
+    } else {
+      delete deptFilterRefs.current[departement];
+    }
+  }, []);
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (filterRef.current && !filterRef.current.contains(event.target)) {
         setShowSearchOptions(false);
+        setFocusedDepartementSearch(null);
       }
       
       Object.keys(deptFilterRefs.current).forEach(departement => {
@@ -68,17 +80,17 @@ const EquipementList = ({ selectedColor }) => {
             ...prev,
             [departement]: false
           }));
+          setFocusedDepartementSearch(prev => prev === departement ? null : prev);
         }
       });
     };
-
+  
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
 
-  // Réinitialiser l'état des départements quand la recherche globale est vide
   useEffect(() => {
     if (!globalQuery.trim()) {
       setExpandedDepartements(prev => {
@@ -91,7 +103,6 @@ const EquipementList = ({ selectedColor }) => {
     }
   }, [globalQuery]);
 
-  // Fonctions de bascule
   const toggleDepartement = (departement) => {
     setExpandedDepartements(prev => ({
       ...prev,
@@ -118,7 +129,6 @@ const EquipementList = ({ selectedColor }) => {
     }));
   };
 
-  // Gestion de la recherche par département
   const handleDepartementSearch = (departement, query) => {
     setDepartementQueries(prev => ({
       ...prev,
@@ -145,7 +155,6 @@ const EquipementList = ({ selectedColor }) => {
     }
   };
   
-  // Récupération des équipements
   const fetchEquipements = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -207,7 +216,6 @@ const EquipementList = ({ selectedColor }) => {
     fetchEquipements();
   }, []);
 
-  // Filtrage global
   useEffect(() => {
     const filtered = equipements.filter(equipement => {
       if (!globalQuery) {
@@ -250,7 +258,14 @@ const EquipementList = ({ selectedColor }) => {
     }
   }, [globalQuery, equipements, searchType]);
 
-  // Pagination
+  const equipementsParDepartement = filteredEquipements.reduce((acc, equipement) => {
+    if (equipement.departement?.nom) {
+      acc[equipement.departement.nom] = acc[equipement.departement.nom] || [];
+      acc[equipement.departement.nom].push(equipement);
+    }
+    return acc;
+  }, {});
+
   const handlePageChange = (departement, newPage) => {
     setPagination(prev => ({
       ...prev,
@@ -261,7 +276,6 @@ const EquipementList = ({ selectedColor }) => {
     }));
   };
 
-  // Gestion suppression
   const confirmDelete = (equipement) => {
     setEquipementToDelete(equipement);
     setShowDeleteConfirmation(true);
@@ -291,7 +305,6 @@ const EquipementList = ({ selectedColor }) => {
     }
   };
 
-  // Gestion ajout/mise à jour
   const handleEquipementAdded = async (newEquipement) => {
     try {
       await fetchEquipements();
@@ -331,7 +344,6 @@ const EquipementList = ({ selectedColor }) => {
     }
   };
 
-  // Filtrage par département
   const filterEquipementsByDepartementQuery = (equipements, departement) => {
     const query = departementQueries[departement] || "";
     if (!query.trim()) return equipements;
@@ -357,7 +369,6 @@ const EquipementList = ({ selectedColor }) => {
     });
   };
   
-  // Pagination par département
   const getPaginatedEquipements = (departement, equipements) => {
     if (!pagination[departement]) return equipements;
     
@@ -368,27 +379,15 @@ const EquipementList = ({ selectedColor }) => {
     return equipements.slice(startIndex, endIndex);
   };
 
-  // Regroupement par département
-  const equipementsParDepartement = filteredEquipements.reduce((acc, equipement) => {
-    if (equipement.departement?.nom) {
-      acc[equipement.departement.nom] = acc[equipement.departement.nom] || [];
-      acc[equipement.departement.nom].push(equipement);
-    }
-    return acc;
-  }, {});
-
-  // Utilitaires d'affichage
   const getEtatClass = (etat) => {
-    switch (etat) {
-      case "fonctionnel": 
-        return { color: selectedColor, className: "text-green-600" };
-      case "en maintenance": 
-        return { color: "#f97316", className: "text-orange-400" };
-      case "défectueux": 
-        return { color: "#dc2626", className: "text-red-600" };
-      default: 
-        return { color: "#4b5563", className: "text-gray-600" };
-    }
+    const baseClasses = {
+      "fonctionnel": { color: selectedColor, className: "text-green-600 dark:text-green-400" },
+      "en maintenance": { color: "#f97316", className: "text-orange-400 dark:text-orange-300" },
+      "défectueux": { color: "#dc2626", className: "text-red-600 dark:text-red-400" },
+      "default": { color: "#4b5563", className: "text-gray-600 dark:text-gray-400" }
+    };
+    
+    return baseClasses[etat] || baseClasses.default;
   };
 
   const formatDate = (dateString) => {
@@ -403,7 +402,6 @@ const EquipementList = ({ selectedColor }) => {
     return `${text.substring(0, maxLength)}...`;
   };
 
-  // Gestion des modales d'affichage
   const handleShowComposants = (composants) => {
     setSelectedComposants(composants?.length > 0 ? composants.map(c => c._id) : []);
     setShowComposantsModal(true);
@@ -430,26 +428,28 @@ const EquipementList = ({ selectedColor }) => {
   };
 
   return (
-    <div className="w-full h-screen p-8 bg-[#f3f8f5]">
+    <div className={`w-full h-screen p-8 ${darkMode ? "dark:bg-gray-900 bg-gray-900" : "bg-[#f3f8f5]"}`}>
       {/* Notifications */}
       {showAddPopup && (
-        <div 
-          className="fixed top-28 right-4 text-white px-4 py-2 rounded-lg shadow-lg z-50 bg-green-500"
-        >
+        <div className={`fixed top-28 right-4 px-4 py-2 rounded-lg shadow-lg z-50 ${
+          darkMode ? "bg-green-700 text-white" : "bg-green-500 text-white"
+        }`}>
           Équipement ajouté avec succès !
         </div>
       )}
 
       {showDeletePopup && (
-        <div className="fixed top-28 right-4 bg-red-600 text-white px-4 py-2 rounded-lg shadow-lg z-50">
+        <div className={`fixed top-28 right-4 px-4 py-2 rounded-lg shadow-lg z-50 ${
+          darkMode ? "bg-red-700 text-white" : "bg-red-600 text-white"
+        }`}>
           Équipement supprimé avec succès !
         </div>
       )}
 
       {showUpdatePopup && (
-        <div 
-          className="fixed top-28 right-4 text-white px-4 py-2 rounded-lg shadow-lg z-50 bg-green-500"
-        >
+        <div className={`fixed top-28 right-4 px-4 py-2 rounded-lg shadow-lg z-50 ${
+          darkMode ? "bg-green-700 text-white" : "bg-green-500 text-white"
+        }`}>
           Équipement mis à jour avec succès !
         </div>
       )}
@@ -457,16 +457,20 @@ const EquipementList = ({ selectedColor }) => {
       {/* Modale de confirmation de suppression */}
       {showDeleteConfirmation && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
-            <h3 className="text-xl font-semibold text-gray-800 mb-4">Confirmer la suppression</h3>
-            <p className="text-gray-600 mb-6">
+          <div className={`rounded-xl p-6 w-full max-w-md shadow-2xl ${
+            darkMode ? "dark:bg-gray-800 text-white" : "bg-white text-gray-800"
+          }`}>
+            <h3 className="text-xl font-semibold mb-4">Confirmer la suppression</h3>
+            <p className={`mb-6 ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
               Êtes-vous sûr de vouloir supprimer l'équipement <span className="font-semibold">{equipementToDelete?.nom}</span> ?
               Cette action est irréversible.
             </p>
             <div className="flex justify-end space-x-4">
               <button
                 onClick={() => setShowDeleteConfirmation(false)}
-                className="text-white px-4 py-3 rounded-full shadow-lg flex items-center gap-2 hover:shadow-xl transition duration-300 bg-gray-400 hover:bg-gray-300"
+                className={`px-4 py-3 rounded-full shadow-lg flex items-center gap-2 hover:shadow-xl transition duration-300 ${
+                  darkMode ? "bg-gray-700 hover:bg-gray-600 text-white" : "bg-gray-400 hover:bg-gray-300 text-white"
+                }`}
               >
                 Annuler
               </button>
@@ -486,9 +490,11 @@ const EquipementList = ({ selectedColor }) => {
       {/* Modale de description */}
       {showDescriptionModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
-            <h3 className="text-xl font-semibold text-gray-800 mb-4">Description complète</h3>
-            <p className="text-gray-600 mb-6 whitespace-pre-line">
+          <div className={`rounded-xl p-6 w-full max-w-md shadow-2xl ${
+            darkMode ? "dark:bg-gray-800 text-white" : "bg-white text-gray-800"
+          }`}>
+            <h3 className="text-xl font-semibold mb-4">Description complète</h3>
+            <p className={`mb-6 whitespace-pre-line ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
               {currentDescription || "Aucune description disponible"}
             </p>
             <div className="flex justify-end">
@@ -507,26 +513,30 @@ const EquipementList = ({ selectedColor }) => {
       {/* Modale des composants */}
       {showComposantsListModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl max-h-[80vh] overflow-y-auto">
-            <h3 className="text-xl font-semibold text-gray-800 mb-4">
+          <div className={`rounded-xl p-6 w-full max-w-md shadow-2xl max-h-[80vh] overflow-y-auto ${
+            darkMode ? "dark:bg-gray-800 text-white" : "bg-white text-gray-800"
+          }`}>
+            <h3 className="text-xl font-semibold mb-4">
               Liste des composants ({currentComposantsList.length})
             </h3>
             {currentComposantsList.length > 0 ? (
               <ul className="space-y-2 mb-6">
                 {currentComposantsList.map((composant, index) => (
-                  <li key={index} className="p-3 bg-gray-50 rounded-lg">
-                    <div className="font-medium text-gray-800">{composant.nom}</div>
+                  <li key={index} className={`p-3 rounded-lg ${
+                    darkMode ? "bg-gray-700" : "bg-gray-50"
+                  }`}>
+                    <div className={`font-medium ${darkMode ? "text-white" : "text-gray-800"}`}>{composant.nom}</div>
                     {composant.type && (
-                      <div className="text-sm text-gray-600">{composant.type}</div>
+                      <div className={`text-sm ${darkMode ? "text-gray-300" : "text-gray-600"}`}>{composant.type}</div>
                     )}
                     {composant.description && (
-                      <div className="text-sm text-gray-600 mt-1">{composant.description}</div>
+                      <div className={`text-sm mt-1 ${darkMode ? "text-gray-300" : "text-gray-600"}`}>{composant.description}</div>
                     )}
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-gray-600 mb-6">Aucun composant disponible</p>
+              <p className={`mb-6 ${darkMode ? "text-gray-300" : "text-gray-600"}`}>Aucun composant disponible</p>
             )}
             <div className="flex justify-end">
               <button
@@ -544,29 +554,33 @@ const EquipementList = ({ selectedColor }) => {
       {/* Modale des capteurs */}
       {showCapteursListModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl max-h-[80vh] overflow-y-auto">
-            <h3 className="text-xl font-semibold text-gray-800 mb-4">
+          <div className={`rounded-xl p-6 w-full max-w-md shadow-2xl max-h-[80vh] overflow-y-auto ${
+            darkMode ? "dark:bg-gray-800 text-white" : "bg-white text-gray-800"
+          }`}>
+            <h3 className="text-xl font-semibold mb-4">
               Liste des capteurs ({currentCapteursList.length})
             </h3>
             {currentCapteursList.length > 0 ? (
               <ul className="space-y-2 mb-6">
                 {currentCapteursList.map((capteur, index) => (
-                  <li key={index} className="p-3 bg-gray-50 rounded-lg">
-                    <div className="font-medium text-gray-800">{capteur.type}</div>
+                  <li key={index} className={`p-3 rounded-lg ${
+                    darkMode ? "bg-gray-700" : "bg-gray-50"
+                  }`}>
+                    <div className={`font-medium ${darkMode ? "text-white" : "text-gray-800"}`}>{capteur.type}</div>
                     {capteur.emplacement && (
-                      <div className="text-sm text-gray-600">Emplacement: {capteur.emplacement}</div>
+                      <div className={`text-sm ${darkMode ? "text-gray-300" : "text-gray-600"}`}>Emplacement: {capteur.emplacement}</div>
                     )}
                     {capteur.unite && (
-                      <div className="text-sm text-gray-600">Unité: {capteur.unite}</div>
+                      <div className={`text-sm ${darkMode ? "text-gray-300" : "text-gray-600"}`}>Unité: {capteur.unite}</div>
                     )}
                     {capteur.description && (
-                      <div className="text-sm text-gray-600 mt-1">{capteur.description}</div>
+                      <div className={`text-sm mt-1 ${darkMode ? "text-gray-300" : "text-gray-600"}`}>{capteur.description}</div>
                     )}
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-gray-600 mb-6">Aucun capteur disponible</p>
+              <p className={`mb-6 ${darkMode ? "text-gray-300" : "text-gray-600"}`}>Aucun capteur disponible</p>
             )}
             <div className="flex justify-end">
               <button
@@ -590,6 +604,7 @@ const EquipementList = ({ selectedColor }) => {
         }}
         composantIds={selectedComposants}
         selectedColor={selectedColor}
+        darkMode={darkMode}
       />
 
       {/* En-tête avec bouton d'ajout et barre de recherche */}
@@ -607,68 +622,20 @@ const EquipementList = ({ selectedColor }) => {
 
         {/* Barre de recherche principale */}
         <div className="relative w-96" ref={filterRef}>
-          <div className="relative">
-            <Filter 
-              className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 cursor-pointer hover:text-gray-600 transition" 
-              size={20} 
-              onClick={() => setShowSearchOptions(!showSearchOptions)}
-            />
-            <input
-              type="text"
-              placeholder={`Filtrer par ${searchType === 'nom' ? 'nom' : searchType === 'departement' ? 'département' : searchType === 'numSerie' ? 'numéro de série' : 'état'}`}
-              className={`w-full border-2 ${isFilterActive ? 'border-green-400' : 'border-gray-300'} rounded-2xl pl-12 pr-4 py-3 bg-white shadow-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-400 placeholder-gray-500 transition duration-300 ease-in-out`}
-              value={globalQuery}
-              onChange={(e) => setGlobalQuery(e.target.value)}
-            />
-            
-            {/* Options de filtrage */}
-            {showSearchOptions && (
-              <div className="absolute left-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-[100] border border-gray-200">
-                <div className="py-1">
-                  <button
-                    onClick={() => {
-                      setSearchType('nom');
-                      setShowSearchOptions(false);
-                      setIsFilterActive(true);
-                    }}
-                    className={`block w-full text-left px-4 py-2 text-sm ${searchType === 'nom' ? 'bg-green-50 text-green-600' : 'text-gray-700 hover:bg-gray-100'}`}
-                  >
-                    Par nom
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSearchType('departement');
-                      setShowSearchOptions(false);
-                      setIsFilterActive(true);
-                    }}
-                    className={`block w-full text-left px-4 py-2 text-sm ${searchType === 'departement' ? 'bg-green-50 text-green-600' : 'text-gray-700 hover:bg-gray-100'}`}
-                  >
-                    Par département
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSearchType('numSerie');
-                      setShowSearchOptions(false);
-                      setIsFilterActive(true);
-                    }}
-                    className={`block w-full text-left px-4 py-2 text-sm ${searchType === 'numSerie' ? 'bg-green-50 text-green-600' : 'text-gray-700 hover:bg-gray-100'}`}
-                  >
-                    Par numéro de série
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSearchType('etat');
-                      setShowSearchOptions(false);
-                      setIsFilterActive(true);
-                    }}
-                    className={`block w-full text-left px-4 py-2 text-sm ${searchType === 'etat' ? 'bg-green-50 text-green-600' : 'text-gray-700 hover:bg-gray-100'}`}
-                  >
-                    Par état
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+          <SearchBar
+            searchType={searchType}
+            setSearchType={setSearchType}
+            query={globalQuery}
+            setQuery={setGlobalQuery}
+            showOptions={showSearchOptions}
+            setShowOptions={setShowSearchOptions}
+            size="large"
+            className="shadow-xl"
+            hasFocus={globalSearchHasFocus}
+            setHasFocus={setGlobalSearchHasFocus}
+            darkMode={darkMode}
+            selectedColor={selectedColor}
+          />
         </div>
       </div>
 
@@ -678,6 +645,7 @@ const EquipementList = ({ selectedColor }) => {
         setIsModalOpen={setIsAddModalOpen}
         onEquipementAdded={handleEquipementAdded}
         selectedColor={selectedColor}
+        darkMode={darkMode}
       />
 
       {/* Modale de mise à jour */}
@@ -688,6 +656,7 @@ const EquipementList = ({ selectedColor }) => {
           equipementToUpdate={equipementToUpdate}
           onEquipementUpdated={handleEquipementUpdated}
           selectedColor={selectedColor}
+          darkMode={darkMode}
         />
       )}
 
@@ -704,13 +673,21 @@ const EquipementList = ({ selectedColor }) => {
             <div 
               key={departement} 
               id={`departement-${departement}`}
-              className="bg-white shadow-xl rounded-2xl overflow-hidden transition-all duration-300"
+              className={`shadow-xl rounded-2xl overflow-hidden transition-all duration-300 ${
+                darkMode ? "dark:bg-gray-800 border-gray-700" : "bg-white border-gray-200"
+              }`}
             >
               {/* En-tête du département */}
-              <div className="flex justify-between items-center p-4 border-b border-gray-200">
+              <div className={`flex justify-between items-center p-4 border-b ${
+                darkMode ? "border-gray-700" : "border-gray-200"
+              }`}>
                 <div className="flex items-center gap-4 cursor-pointer" onClick={() => toggleDepartement(departement)}>
-                  <h3 className="text-lg font-semibold text-gray-800">{departement}</h3>
-                  <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm">
+                  <h3 className={`text-lg font-semibold ${
+                    darkMode ? "text-white" : "text-gray-800"
+                  }`}>{departement}</h3>
+                  <span className={`px-3 py-1 rounded-full text-sm ${
+                    darkMode ? "bg-gray-700 text-gray-300" : "bg-gray-100 text-gray-600"
+                  }`}>
                     {filteredEquipements.length} équipement{filteredEquipements.length > 1 ? 's' : ''}
                   </span>
                 </div>
@@ -719,64 +696,39 @@ const EquipementList = ({ selectedColor }) => {
                 <div className="flex items-center gap-4">
                   <div 
                     className="relative w-64 transition-all duration-300"
-                    ref={el => deptFilterRefs.current[departement] = el}
+                    ref={el => setDeptFilterRef(departement, el)}
                   >
-                    <div className="relative">
-                      <Filter 
-                        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 cursor-pointer hover:text-gray-600 transition" 
-                        size={18} 
-                        onClick={(e) => toggleDepartementFilter(departement, e)}
-                      />
-                      <input
-                        type="text"
-                        placeholder={`Filtrer par ${currentSearchType === 'nom' ? 'nom' : currentSearchType === 'numSerie' ? 'numéro de série' : 'état'}`}
-                        className={`w-full border ${departementQueries[departement] ? 'border-green-400 pl-10' : 'border-gray-300 pl-10'} rounded-lg py-2 bg-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-400 placeholder-gray-500 text-sm transition-all duration-300`}
-                        value={departementQueries[departement] || ""}
-                        onChange={(e) => handleDepartementSearch(departement, e.target.value)}
-                      />
-                      {departementQueries[departement] && (
-                        <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                          <button 
-                            onClick={() => handleDepartementSearch(departement, "")}
-                            className="text-gray-400 hover:text-gray-600"
-                          >
-                            <X size={18} />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Options de filtrage par département */}
-                    {activeDepartementFilters[departement] && (
-                      <div className="absolute left-0 mt-1 w-48 bg-white rounded-lg shadow-xl z-[100] border border-gray-200">
-                        <div className="py-1">
-                          <button
-                            onClick={() => setDepartementFilterType(departement, 'nom')}
-                            className={`block w-full text-left px-4 py-2 text-sm ${currentSearchType === 'nom' ? 'bg-green-50 text-green-600' : 'text-gray-700 hover:bg-gray-100'}`}
-                          >
-                            Par nom
-                          </button>
-                          <button
-                            onClick={() => setDepartementFilterType(departement, 'numSerie')}
-                            className={`block w-full text-left px-4 py-2 text-sm ${currentSearchType === 'numSerie' ? 'bg-green-50 text-green-600' : 'text-gray-700 hover:bg-gray-100'}`}
-                          >
-                            Par numéro de série
-                          </button>
-                          <button
-                            onClick={() => setDepartementFilterType(departement, 'etat')}
-                            className={`block w-full text-left px-4 py-2 text-sm ${currentSearchType === 'etat' ? 'bg-green-50 text-green-600' : 'text-gray-700 hover:bg-gray-100'}`}
-                          >
-                            Par état
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                    <SearchBar
+                      searchType={currentSearchType}
+                      setSearchType={(type) => setDepartementFilterType(departement, type)}
+                      query={departementQueries[departement] || ""}
+                      setQuery={(query) => handleDepartementSearch(departement, query)}
+                      showOptions={activeDepartementFilters[departement]}
+                      setShowOptions={(show) => setActiveDepartementFilters(prev => ({
+                        ...prev,
+                        [departement]: show
+                      }))}
+                      size="default"
+                      excludeDepartement={true}
+                      hasFocus={focusedDepartementSearch === departement}
+                      setHasFocus={(focus) => setFocusedDepartementSearch(focus ? departement : null)}
+                      darkMode={darkMode}
+                      selectedColor={selectedColor}
+                    />
                   </div>
                   
                   {/* Bouton d'expansion */}
                   <button
                     onClick={() => toggleDepartement(departement)}
-                    className={`p-2 rounded-full ${expandedDepartements[departement] ? 'bg-gray-100 text-gray-700' : 'text-gray-500 hover:bg-gray-100'} transition-colors`}
+                    className={`p-2 rounded-full ${
+                      expandedDepartements[departement] 
+                        ? darkMode 
+                          ? "bg-gray-700 text-gray-300" 
+                          : "bg-gray-100 text-gray-700" 
+                        : darkMode 
+                          ? "text-gray-400 hover:bg-gray-700" 
+                          : "text-gray-500 hover:bg-gray-100"
+                    } transition-colors`}
                   >
                     {expandedDepartements[departement] ? (
                       <ChevronUp size={20} />
@@ -793,8 +745,12 @@ const EquipementList = ({ selectedColor }) => {
                   <div className="p-4">
                     <div className="overflow-x-auto">
                       <table className="w-full border-collapse">
-                        <thead className="bg-gradient-to-r from-gray-100 to-gray-200 text-left">
-                          <tr className="text-gray-600 h-16">
+                        <thead className={`text-left ${
+                          darkMode 
+                            ? "bg-gradient-to-r from-gray-700 to-gray-800 text-gray-300" 
+                            : "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-600"
+                        }`}>
+                          <tr className="h-16">
                             <th className="p-4 font-semibold text-sm w-[12%]">Nom</th>
                             <th className="p-4 font-semibold text-sm w-[12%]">N° Série</th>
                             <th className="p-4 font-semibold text-sm w-[16%]">Description</th>
@@ -810,19 +766,35 @@ const EquipementList = ({ selectedColor }) => {
                           {paginatedEquipements.map((equipement, index) => {
                             const etatClass = getEtatClass(equipement.etat);
                             return (
-                              <tr key={equipement._id} className={`border-t ${index % 2 === 1 ? "bg-gray-50" : "bg-white"} h-16`}>
-                                <td className="p-4 border-b text-gray-700 h-16 overflow-hidden">
+                              <tr key={equipement._id} className={`border-t ${
+                                darkMode 
+                                  ? index % 2 === 1 
+                                    ? "bg-gray-900" 
+                                    : "bg-gray-800" 
+                                  : index % 2 === 1 
+                                    ? "bg-gray-50" 
+                                    : "bg-white"
+                              } h-16`}>
+                                <td className={`p-4 border-b ${
+                                  darkMode ? "text-gray-300" : "text-gray-700"
+                                } h-16 overflow-hidden`}>
                                   {equipement.nom || "N/A"}
                                 </td>
-                                <td className="p-4 border-b text-gray-700 whitespace-nowrap overflow-hidden text-ellipsis">
+                                <td className={`p-4 border-b ${
+                                  darkMode ? "text-gray-300" : "text-gray-700"
+                                } whitespace-nowrap overflow-hidden text-ellipsis`}>
                                   {equipement.numSerie || "N/A"}
                                 </td>
-                                <td className="p-4 border-b text-gray-600 h-16">
+                                <td className={`p-4 border-b ${
+                                  darkMode ? "text-gray-300" : "text-gray-600"
+                                } h-16`}>
                                   {truncateText(equipement.description)}
                                   {equipement.description?.length > 25 && (
                                     <button 
                                       onClick={() => handleShowDescription(equipement.description)}
-                                      className="text-blue-500 hover:text-blue-700 ml-1 text-sm"
+                                      className={`ml-1 text-sm ${
+                                        darkMode ? "text-blue-400 hover:text-blue-300" : "text-blue-500 hover:text-blue-700"
+                                      }`}
                                     >
                                       Voir plus
                                     </button>
@@ -833,14 +805,18 @@ const EquipementList = ({ selectedColor }) => {
                                     <span className="text-lg" style={{ color: etatClass.color }}>•</span> {equipement.etat || "N/A"}
                                   </span>
                                 </td>
-                                <td className="p-4 border-b text-gray-600 h-16">
+                                <td className={`p-4 border-b ${
+                                  darkMode ? "text-gray-300" : "text-gray-600"
+                                } h-16`}>
                                   {equipement.composants?.length > 0 ? (
                                     <>
                                       {truncateText(equipement.composants.map(c => c.nom).join(', '))}
                                       {equipement.composants.map(c => c.nom).join(', ').length > 25 && (
                                         <button 
                                           onClick={() => handleShowComposantsList(equipement.composants)}
-                                          className="text-blue-500 hover:text-blue-700 ml-1 text-sm"
+                                          className={`ml-1 text-sm ${
+                                            darkMode ? "text-blue-400 hover:text-blue-300" : "text-blue-500 hover:text-blue-700"
+                                          }`}
                                         >
                                           Voir plus
                                         </button>
@@ -850,7 +826,9 @@ const EquipementList = ({ selectedColor }) => {
                                     <span>Aucun composant</span>
                                   )}
                                 </td>
-                                <td className="p-4 border-b text-gray-600 h-16">
+                                <td className={`p-4 border-b ${
+                                  darkMode ? "text-gray-300" : "text-gray-600"
+                                } h-16`}>
                                   {equipement.composants?.flatMap(c => c.capteurs || []).length > 0 ? (
                                     <>
                                       {truncateText(
@@ -865,7 +843,9 @@ const EquipementList = ({ selectedColor }) => {
                                         .join(', ').length > 25 && (
                                         <button 
                                           onClick={() => handleShowCapteursList(equipement.composants.flatMap(c => c.capteurs || []))}
-                                          className="text-blue-500 hover:text-blue-700 ml-1 text-sm"
+                                          className={`ml-1 text-sm ${
+                                            darkMode ? "text-blue-400 hover:text-blue-300" : "text-blue-500 hover:text-blue-700"
+                                          }`}
                                         >
                                           Voir plus
                                         </button>
@@ -875,12 +855,19 @@ const EquipementList = ({ selectedColor }) => {
                                     <span>Aucun capteur</span>
                                   )}
                                 </td>
-                                <td className="p-4 border-b text-gray-700 h-16">{formatDate(equipement.dateAchat)}</td>
-                                <td className="p-4 border-b text-gray-700 h-16">{formatDate(equipement.dateAjout)}</td>
-                                <td className="p-4 border-b text-center h-16">
+                                <td className={`p-4 border-b ${
+                                  darkMode ? "text-gray-300" : "text-gray-700"
+                                } h-16`}>{formatDate(equipement.dateAchat)}</td>
+                                <td className={`p-4 border-b ${
+                                  darkMode ? "text-gray-300" : "text-gray-700"
+                                } h-16`}>{formatDate(equipement.dateAjout)}</td>
+                                <td className={`p-4 border-b text-center h-16 ${
+                                  darkMode ? "border-gray-700" : "border-gray-200"
+                                }`}>
                                   <div className="flex justify-center items-center gap-4">
                                     <button
-                                      className="text-green-500 hover:text-green-600 transition duration-200"
+                                      className="transition duration-200"
+                                      style={{ color: selectedColor }}
                                       onClick={() => handleShowComposants(equipement.composants)}
                                     >
                                       <Eye size={20} />
@@ -889,13 +876,17 @@ const EquipementList = ({ selectedColor }) => {
                                     {role === "Administrateur" && (
                                       <>
                                         <button
-                                          className="text-blue-500 hover:text-blue-700 transition duration-200"
+                                          className={`transition duration-200 ${
+                                            darkMode ? "text-blue-400 hover:text-blue-300" : "text-blue-500 hover:text-blue-700"
+                                          }`}
                                           onClick={() => handleOpenUpdateModal(equipement)}
                                         >
                                           <Edit size={20} />
                                         </button>
                                         <button
-                                          className="text-red-500 hover:text-red-700 transition duration-200"
+                                          className={`transition duration-200 ${
+                                            darkMode ? "text-red-400 hover:text-red-300" : "text-red-500 hover:text-red-700"
+                                          }`}
                                           onClick={() => confirmDelete(equipement)}
                                         >
                                           <Trash size={20} />
@@ -915,15 +906,19 @@ const EquipementList = ({ selectedColor }) => {
                   {/* Pagination */}
                   {totalPages > 1 && (
                     <div className="flex justify-center pb-4">
-                      <div className="flex items-center gap-2 bg-gray-50 rounded-lg p-2 border border-green-100 shadow-sm">
+                      <div className={`flex items-center gap-2 rounded-lg p-2 border shadow-sm ${
+                        darkMode ? "bg-gray-800 border-gray-700" : "bg-gray-50 border-green-100"
+                      }`}>
                         <button
                           onClick={() => handlePageChange(departement, currentPage - 1)}
                           disabled={currentPage === 1}
                           className={`p-2 rounded-md flex items-center justify-center ${
                             currentPage === 1 
-                              ? 'text-gray-300 cursor-not-allowed' 
-                              : 'text-green-600 hover:bg-green-50 hover:text-green-700 transition-colors'
-                          }`}
+                              ? 'text-gray-500 cursor-not-allowed' 
+                              : darkMode 
+                                ? 'text-green-400 hover:bg-gray-700 hover:text-green-300' 
+                                : 'text-green-600 hover:bg-green-50 hover:text-green-700'
+                          } transition-colors`}
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                             <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -938,8 +933,10 @@ const EquipementList = ({ selectedColor }) => {
                               className={`w-8 h-8 rounded-md flex items-center justify-center text-sm font-medium ${
                                 page === currentPage
                                   ? 'text-white shadow-inner'
-                                  : 'text-gray-600 hover:text-green-600 hover:bg-green-50 transition-colors'
-                              }`}
+                                  : darkMode 
+                                    ? 'text-gray-300 hover:text-green-400 hover:bg-gray-700' 
+                                    : 'text-gray-600 hover:text-green-600 hover:bg-green-50'
+                              } transition-colors`}
                               style={page === currentPage ? { backgroundColor: selectedColor } : {}}
                             >
                               {page}
@@ -952,9 +949,11 @@ const EquipementList = ({ selectedColor }) => {
                           disabled={currentPage === totalPages}
                           className={`p-2 rounded-md flex items-center justify-center ${
                             currentPage === totalPages 
-                              ? 'text-gray-300 cursor-not-allowed' 
-                              : 'text-green-600 hover:bg-green-50 hover:text-green-700 transition-colors'
-                          }`}
+                              ? 'text-gray-500 cursor-not-allowed' 
+                              : darkMode 
+                                ? 'text-green-400 hover:bg-gray-700 hover:text-green-300' 
+                                : 'text-green-600 hover:bg-green-50 hover:text-green-700'
+                          } transition-colors`}
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                             <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />

@@ -4,7 +4,14 @@ import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import "../index.css";
 
-const UpdateEquipementModal = ({ isModalOpen, setIsModalOpen, equipementToUpdate, onEquipementUpdated, selectedColor }) => {
+const UpdateEquipementModal = ({ 
+  isModalOpen, 
+  setIsModalOpen, 
+  equipementToUpdate, 
+  onEquipementUpdated, 
+  selectedColor,
+  darkMode = false
+}) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
@@ -167,50 +174,60 @@ const UpdateEquipementModal = ({ isModalOpen, setIsModalOpen, equipementToUpdate
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center z-50">
-      <div className="bg-white p-6 rounded-lg shadow-xl w-2/3 flex flex-col">
+    <div className={`fixed inset-0 ${darkMode ? "bg-gray-900 bg-opacity-75" : "bg-gray-600 bg-opacity-50"} flex justify-center items-center z-50`}>
+      <div className={`p-6 rounded-lg shadow-xl w-2/3 flex flex-col ${darkMode ? "bg-gray-800 text-gray-100" : "bg-white text-gray-800"}`}>
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+          <div className={`border px-4 py-3 rounded relative mb-4 ${
+            darkMode ? "bg-red-900 border-red-700 text-red-100" : "bg-red-100 border-red-400 text-red-700"
+          }`}>
             <span className="block sm:inline">{error}</span>
             <button 
               className="absolute top-0 bottom-0 right-0 px-4 py-3" 
               onClick={() => setError(null)}
             >
-              <XMarkIcon className="h-5 w-5 text-red-500" />
+              <XMarkIcon className={`h-5 w-5 ${darkMode ? "text-red-300" : "text-red-500"}`} />
             </button>
           </div>
         )}
         
         <div className="flex flex-1">
           {/* Colonne de gauche : Aperçu */}
-          <div className="w-1/2 pr-4 border-r border-gray-200">
-            <h3 className="text-xl font-semibold text-gray-800 mb-4">Aperçu actuel</h3>
+          <div className={`w-1/2 pr-4 ${darkMode ? "border-gray-700" : "border-gray-200"} border-r`}>
+            <h3 className={`text-xl font-semibold mb-4 ${darkMode ? "text-white" : "text-gray-800"}`}>Aperçu actuel</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Nom</label>
-                <p className="mt-1 p-2 bg-gray-100 rounded-lg">{equipementToUpdate.nom}</p>
+                <label className={`block text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Nom</label>
+                <p className={`mt-1 p-2 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-100"}`}>
+                  {equipementToUpdate.nom}
+                </p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Description</label>
-                <p className="mt-1 p-2 bg-gray-100 rounded-lg">{equipementToUpdate.description}</p>
+                <label className={`block text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Description</label>
+                <p className={`mt-1 p-2 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-100"}`}>
+                  {equipementToUpdate.description}
+                </p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Numéro de série</label>
-                <p className="mt-1 p-2 bg-gray-100 rounded-lg">{equipementToUpdate.numSerie}</p>
+                <label className={`block text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Numéro de série</label>
+                <p className={`mt-1 p-2 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-100"}`}>
+                  {equipementToUpdate.numSerie}
+                </p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Date d'achat</label>
-                <p className="mt-1 p-2 bg-gray-100 rounded-lg">
+                <label className={`block text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Date d'achat</label>
+                <p className={`mt-1 p-2 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-100"}`}>
                   {equipementToUpdate.dateAchat ? new Date(equipementToUpdate.dateAchat).toLocaleDateString() : "Non spécifiée"}
                 </p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">État</label>
-                <p className="mt-1 p-2 bg-gray-100 rounded-lg">{equipementToUpdate.etat}</p>
+                <label className={`block text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}>État</label>
+                <p className={`mt-1 p-2 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-100"}`}>
+                  {equipementToUpdate.etat}
+                </p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Département</label>
-                <p className="mt-1 p-2 bg-gray-100 rounded-lg">
+                <label className={`block text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Département</label>
+                <p className={`mt-1 p-2 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-100"}`}>
                   {getDepartementName(equipementToUpdate.departement) || "Non spécifié"}
                 </p>
               </div>
@@ -219,60 +236,88 @@ const UpdateEquipementModal = ({ isModalOpen, setIsModalOpen, equipementToUpdate
 
           {/* Colonne de droite : Formulaire de modification */}
           <div className="w-1/2 pl-4">
-            <h3 className="text-xl font-semibold text-gray-800 mb-4">Modifier l'équipement</h3>
+            <h3 className={`text-xl font-semibold mb-4 ${darkMode ? "text-white" : "text-gray-800"}`}>Modifier l'équipement</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Nom *</label>
+                <label className={`block text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Nom *</label>
                 <input
                   type="text"
-                  className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                  className={`w-full p-3 border-2 rounded-lg focus:outline-none ${
+                    darkMode 
+                      ? "bg-gray-700 border-gray-600 focus:border-blue-500 text-white" 
+                      : "border-gray-300 focus:border-blue-500"
+                  }`}
                   placeholder="Entrez le nom de l'équipement"
+                  value={updatedEquipement.nom}
                   onChange={(e) => setUpdatedEquipement({ ...updatedEquipement, nom: e.target.value })}
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Description</label>
+                <label className={`block text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Description</label>
                 <input
                   type="text"
-                  className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                  className={`w-full p-3 border-2 rounded-lg focus:outline-none ${
+                    darkMode 
+                      ? "bg-gray-700 border-gray-600 focus:border-blue-500 text-white" 
+                      : "border-gray-300 focus:border-blue-500"
+                  }`}
                   placeholder="Décrivez l'équipement"
+                  value={updatedEquipement.description}
                   onChange={(e) => setUpdatedEquipement({ ...updatedEquipement, description: e.target.value })}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Numéro de série *</label>
+                <label className={`block text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Numéro de série *</label>
                 <input
                   type="text"
-                  className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                  className={`w-full p-3 border-2 rounded-lg focus:outline-none ${
+                    darkMode 
+                      ? "bg-gray-700 border-gray-600 focus:border-blue-500 text-white" 
+                      : "border-gray-300 focus:border-blue-500"
+                  }`}
                   placeholder="Entrez le numéro de série"
+                  value={updatedEquipement.numSerie}
                   onChange={(e) => setUpdatedEquipement({ ...updatedEquipement, numSerie: e.target.value })}
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Date d'achat</label>
+                <label className={`block text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Date d'achat</label>
                 <div className="relative mt-1">
                   <input
                     type="date"
-                    className="w-full p-3 border-2 border-gray-300 rounded-lg pl-10 focus:border-green-500 focus:outline-none"
+                    className={`w-full p-3 border-2 rounded-lg pl-10 focus:outline-none ${
+                      darkMode 
+                        ? "bg-gray-700 border-gray-600 focus:border-blue-500 text-white" 
+                        : "border-gray-300 focus:border-blue-500"
+                    }`}
                     placeholder="Sélectionnez la date d'achat"
+                    value={updatedEquipement.dateAchat}
                     onChange={(e) => setUpdatedEquipement({ ...updatedEquipement, dateAchat: e.target.value })}
                   />
-                  <CalendarDaysIcon className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                  <CalendarDaysIcon className={`absolute left-3 top-3 w-5 h-5 ${
+                    darkMode ? "text-gray-400" : "text-gray-400"
+                  }`} />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">État *</label>
+                <label className={`block text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}>État *</label>
                 <select
-                  className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                  className={`w-full p-3 border-2 rounded-lg focus:outline-none ${
+                    darkMode 
+                      ? "bg-gray-700 border-gray-600 focus:border-blue-500 text-white" 
+                      : "border-gray-300 focus:border-blue-500"
+                  }`}
+                  value={updatedEquipement.etat}
                   onChange={(e) => setUpdatedEquipement({ ...updatedEquipement, etat: e.target.value })}
                   required
                 >
+                  <option value="">Sélectionner l'état</option>
                   <option value="fonctionnel">Fonctionnel</option>
                   <option value="en maintenance">En maintenance</option>
                   <option value="défectueux">Défectueux</option>
@@ -280,12 +325,18 @@ const UpdateEquipementModal = ({ isModalOpen, setIsModalOpen, equipementToUpdate
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Département *</label>
+                <label className={`block text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Département *</label>
                 <select
-                  className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                  className={`w-full p-3 border-2 rounded-lg focus:outline-none ${
+                    darkMode 
+                      ? "bg-gray-700 border-gray-600 focus:border-blue-500 text-white" 
+                      : "border-gray-300 focus:border-blue-500"
+                  }`}
+                  value={updatedEquipement.departement}
                   onChange={(e) => setUpdatedEquipement({ ...updatedEquipement, departement: e.target.value })}
                   required
                 >
+                  <option value="">Sélectionner le département</option>
                   {Array.isArray(departements) && departements.map((departement) => (
                     <option 
                       key={departement._id} 
@@ -303,8 +354,9 @@ const UpdateEquipementModal = ({ isModalOpen, setIsModalOpen, equipementToUpdate
         {/* Boutons d'action */}
         <div className="mt-6 flex justify-end space-x-4">
           <button
-            className="text-white px-4 py-3 rounded-full shadow-lg flex items-center gap-2 hover:shadow-xl transition duration-300"
-            style={{ backgroundColor: "#9ca3af" }}
+            className={`px-4 py-3 rounded-full shadow-lg flex items-center gap-2 hover:shadow-xl transition duration-300 ${
+              darkMode ? "bg-gray-600 hover:bg-gray-500 text-white" : "bg-gray-200 hover:bg-gray-300 text-gray-700"
+            }`}
             onClick={() => setIsModalOpen(false)}
             disabled={loading}
           >
