@@ -10,6 +10,7 @@ import DepartListPage from './pages/DepartListPage';
 import CapteurListPage from './pages/CapteurListPage';
 import DemandeListPage from './components/DemandeListPage';
 import AlerteListPage from './components/AlerteListPage';
+import RapportPage from './pages/RapportPage';
 
 const App = () => {
   const [darkMode, setDarkMode] = useState(() => {
@@ -169,6 +170,18 @@ const App = () => {
             path="/alertes"
             element={
               <AlerteListPage
+                darkMode={darkMode}
+                setDarkMode={setDarkMode}
+                selectedColor={selectedColor}
+                setSelectedColor={setSelectedColor}
+              />
+              
+            }
+          />
+          <Route
+            path="/rapport"
+            element={
+              <RapportPage
                 darkMode={darkMode}
                 setDarkMode={setDarkMode}
                 selectedColor={selectedColor}

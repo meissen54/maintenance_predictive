@@ -111,8 +111,16 @@ const DemandeList = ({ selectedColor, darkMode }) => {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      setDemandes(response.data);
-      setFilteredDemandes(response.data);
+      // Utiliser les champs *_Final pour l'affichage
+      const formattedDemandes = response.data.map(demande => ({
+        ...demande,
+        equipement: demande.equipementFinal,
+        composant: demande.composantFinal,
+        capteur: demande.capteurFinal
+      }));
+
+      setDemandes(formattedDemandes);
+      setFilteredDemandes(formattedDemandes);
     } catch (error) {
       console.error("Erreur lors de la récupération des demandes:", error);
       if (error.response?.status === 401) {
@@ -347,19 +355,19 @@ const DemandeList = ({ selectedColor, darkMode }) => {
     }
   };
 
-  const handleUpdateStatus = async (demandeId, newStatus) => {
+  const handleApproveDemande = async (demandeId) => {
     try {
       const token = localStorage.getItem("token");
       await axios.put(
-        `http://localhost:4000/apiDemande/updateStatus/${demandeId}`,
-        { statut: newStatus },
+        `http://localhost:4000/apiDemande/AppEqui/${demandeId}`,
+        {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
       await fetchDemandes();
       setShowStatusModal(false);
     } catch (error) {
-      console.error("Erreur lors de la mise à jour du statut:", error);
+      console.error("Erreur lors de l'approbation de la demande:", error);
     }
   };
 
@@ -382,11 +390,11 @@ const DemandeList = ({ selectedColor, darkMode }) => {
 
   const getElementInfo = (demande) => {
     if (demande.equipement) {
-      return demande.equipement.nom;
+      return demande.equipement.nom || "N/A";
     } else if (demande.composant) {
-      return demande.composant.nom;
+      return demande.composant.nom || "N/A";
     } else if (demande.capteur) {
-      return demande.capteur.type;
+      return demande.capteur.type || "N/A";
     }
     return "N/A";
   };
@@ -493,7 +501,7 @@ const DemandeList = ({ selectedColor, darkMode }) => {
             
             <div className="mt-6 flex justify-center space-x-4">
               <button
-                onClick={() => handleUpdateStatus(currentDemande._id, "Approuvé")}
+                onClick={() => handleApproveDemande(currentDemande._id)}
                 className="text-white px-4 py-3 rounded-full shadow-lg flex items-center gap-2 hover:shadow-xl transition duration-300"
                 style={{ backgroundColor: selectedColor }}
               >
@@ -981,4 +989,4 @@ const DemandeList = ({ selectedColor, darkMode }) => {
   );
 };
 
-export default DemandeList;
+export default DemandeList; 

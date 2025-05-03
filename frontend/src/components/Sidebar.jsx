@@ -166,7 +166,7 @@ const Sidebar = ({ isMenuOpen, selectedColor, setSelectedColor, darkMode }) => {
 
             <li>
               <Link
-                to="/stats"
+                to="/rapport"
                 className={`flex items-center gap-3 p-3 rounded-lg font-bold ${
                   isActive("/stats")
                   ? { color: selectedColor }

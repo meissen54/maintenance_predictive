@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Bell, Moon, Sun, User, Settings, Palette, ArrowLeft, ArrowRight } from 'lucide-react';
 import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
+import AlertsModal from './AlertsModal';
 
 const Navbar = ({ 
   labelText, 
@@ -15,8 +16,9 @@ const Navbar = ({
   const [userFullName, setUserFullName] = useState('');
   const [userRole, setUserRole] = useState('');
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
-  const [localColor, setLocalColor] = useState(selectedColor);
-
+  const [showAlertsModal, setShowAlertsModal] = useState(false);
+  const [unreadAlertsCount, setUnreadAlertsCount] = useState(0);
+  
   const navigate = useNavigate();
   const colors = [
     { name: "Rouge", value: "#e74c3c" },
@@ -28,6 +30,7 @@ const Navbar = ({
   ];
 
   // Synchronisation de la couleur
+  const [localColor, setLocalColor] = useState(selectedColor);
   useEffect(() => {
     setLocalColor(selectedColor);
   }, [selectedColor]);
@@ -56,6 +59,41 @@ const Navbar = ({
     }
   }, []);
 
+  // Chargement des alertes non lues
+  useEffect(() => {
+    const fetchUnreadAlerts = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        let apiUrl = 'http://localhost:4000/apiAlerte/getUnreadAlerts';
+        
+        if (userRole === 'Technicien') {
+          apiUrl = 'http://localhost:4000/apiAlerte/getUnreadAlertsByUser';
+        }
+
+        const response = await fetch(apiUrl, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setUnreadAlertsCount(userRole === 'Technicien' ? data.totalUnread : data.totalAlerts);
+        }
+      } catch (error) {
+        console.error('Erreur lors de la récupération des alertes:', error);
+        setUnreadAlertsCount(0);
+      }
+    };
+
+    if (userRole) {
+      fetchUnreadAlerts();
+      const interval = setInterval(fetchUnreadAlerts, 2000);
+
+      return () => clearInterval(interval);
+    }
+  }, [userRole]);
+
   // Gestion du menu
   const handleMenuClick = () => {
     const newState = !isMenuOpen;
@@ -81,11 +119,17 @@ const Navbar = ({
     setShowSettingsDropdown(!showSettingsDropdown);
   };
 
+  // Gestion du modal des alertes
+  const toggleAlertsModal = () => {
+    setShowAlertsModal(!showAlertsModal);
+  };
+
   // Gestion du clic en dehors du dropdown
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (!event.target.closest('.settings-dropdown')) {
+      if (!event.target.closest('.settings-dropdown') && !event.target.closest('.alerts-modal-container')) {
         setShowSettingsDropdown(false);
+        setShowAlertsModal(false);
       }
     };
 
@@ -103,7 +147,7 @@ const Navbar = ({
     };
 
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    return () => window.addEventListener('storage', handleStorageChange);
   }, [setSelectedColor]);
 
   return (
@@ -189,16 +233,30 @@ const Navbar = ({
 
         {/* Notification */}
         <div className="relative group">
-          <div
+          <button
+            onClick={toggleAlertsModal}
             className="rounded-full p-2.5 transition-all group-hover:scale-110 border-2 bg-white dark:bg-gray-700"
             style={{ borderColor: localColor }}
+            aria-label="Notifications"
           >
             <Bell className="h-6 w-6" style={{ color: localColor }} />
-          </div>
-          <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full text-xs w-6 h-6 flex items-center justify-center font-medium">
-            10
-          </span>
+          </button>
+          {unreadAlertsCount > 0 && (
+            <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full text-xs w-6 h-6 flex items-center justify-center font-medium">
+              { unreadAlertsCount}
+            </span>
+          )}
         </div>
+
+        {/* Modal des alertes */}
+        {showAlertsModal && (
+          <AlertsModal 
+            unreadAlertsCount={unreadAlertsCount}
+            localColor={localColor}
+            darkMode={darkMode}
+            onClose={() => setShowAlertsModal(false)}
+          />
+        )}
 
         {/* Bouton Dark Mode */}
         <button

@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+models_ai/modele_panne_artificiel.h5
+models_ai/label_encoder.pkl
